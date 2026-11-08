@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Build APK
+        run: gradle assembleRelease
+
+      - name: Siapkan file
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk KartuKlasik.apk
+          zip -j KartuKlasik-apk.zip KartuKlasik.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KartuKlasik-apk
+          path: KartuKlasik.apk
+
+      - name: Rilis "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          gh release create latest KartuKlasik.apk KartuKlasik-apk.zip \
+            --target "$GITHUB_SHA" \
+            --title "Kartu Klasik (build ${GITHUB_RUN_NUMBER})" \
+            --notes "FreeCell & Klondike gaya Windows klasik. Build otomatis dari commit ${GITHUB_SHA::7}."

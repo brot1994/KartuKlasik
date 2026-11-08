@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def runNo = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace 'id.bram.kartuklasik'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "id.bram.kartuklasik"
+        minSdk 23
+        targetSdk 34
+        versionCode runNo
+        versionName "1.0." + runNo
+    }
+
+    // Kunci tetap supaya APK baru bisa di-install menimpa versi lama
+    signingConfigs {
+        kk {
+            storeFile file('kk.keystore')
+            storePassword 'kartuklasik'
+            keyAlias 'kk'
+            keyPassword 'kartuklasik'
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.kk }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.kk
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
