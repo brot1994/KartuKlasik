@@ -115,6 +115,9 @@ table.stt{border-collapse:collapse;width:100%;font-size:13px}
 <script>
 (function(){
 'use strict';
+const WANT=new URLSearchParams(location.search).get('g');
+try{if(!WANT&&JSON.parse(localStorage.getItem('kk_last'))==='permen'){location.replace('permen.html');return}}catch(e){}
+try{localStorage.setItem('kk_last','"cards"')}catch(e){}
 /* ---------- util ---------- */
 const $=s=>document.querySelector(s);
 const RN=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -659,6 +662,7 @@ $('#mGame').addEventListener('click',()=>{
     {t:'Ulangi deal ini',f:restartDeal},
     '-',
     {t:kl?'Main FreeCell':'Main Klondike',f:()=>newGame(kl?'freecell':'klondike')},
+    {t:'Main Permen Manis',f:()=>{save();LS.set('kk_last','permen');location.href='permen.html'}},
     '-',
     {t:'Statistik…',f:statsDlg},
     {t:'Cara main…',f:helpDlg},
@@ -726,7 +730,7 @@ function helpDlg(){
    <p><b>FreeCell</b> — Semua kartu terbuka. 4 sel kiri atas bisa menampung 1 kartu masing-masing. Jumlah kartu yang bisa dipindah sekaligus bergantung pada sel dan kolom kosong.</p>
    <p><b>Kontrol</b> — Ketuk kartu: pindah otomatis ke tempat terbaik. Seret: pindah manual. Undo tanpa batas, Hint menyorot langkah yang mungkin.</p>`,[{t:'OK'}]);
 }
-function aboutDlg(){dialog('Tentang Kartu Klasik',`<p><b>Kartu Klasik</b> 1.0<br>FreeCell & Klondike bergaya Windows klasik.<br>Dibuat untuk Om Bram.</p>`,[{t:'OK'}])}
+function aboutDlg(){dialog('Tentang Kartu Klasik',`<p><b>Kartu Klasik</b> 1.1<br>FreeCell & Klondike bergaya Windows klasik, plus Permen Manis.<br>Dibuat untuk Om Bram.</p>`,[{t:'OK'}])}
 function winDialog(bonus){
   const kl=G.type==='klondike';
   let b=`<p>Selamat, Anda menang!</p><p>Waktu: ${fmtT(G.time)}<br>Langkah: ${G.moves}`;
@@ -746,10 +750,10 @@ window.kkBack=function(){
 /* ---------- start ---------- */
 applyBack();makeCards();
 const sv0=LS.get('kk_game',null);
-if(sv0&&sv0.G&&!sv0.G.won&&sv0.G.piles){
+if(sv0&&sv0.G&&!sv0.G.won&&sv0.G.piles&&(!WANT||sv0.G.type===WANT)){
   G=sv0.G;undo=sv0.undo||[];
   buildSlots();layout();render(true);status();setTitle();
-}else newGame();
+}else newGame(WANT==='freecell'||WANT==='klondike'?WANT:undefined);
 window.__kk={get G(){return G},msDeal,newGame,legal,doMove,tapMove,locate,findHint,stockClick,checkWin,startWin,
   setG(g){G=g;buildSlots();layout();render(true);status()}};
 })();
