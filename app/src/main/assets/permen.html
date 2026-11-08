@@ -155,7 +155,7 @@ function candy(color,type){
 }
 
 /* ---------- suara (WebAudio, tanpa file) ---------- */
-let SET=Object.assign({sound:true},LS.get('pm_set',{}));
+let SET=Object.assign({sound:true,god:false},LS.get('pm_set',{}));
 let AC=null;
 function ac(){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}return AC}
 function tone(f,dur,type,vol,slide,delay){
@@ -300,6 +300,7 @@ function boom(r,c,size){const b=document.createElement('div');b.className='boom'
   b.style.width=b.style.height=s+'px';b.style.left=(c*CS+CS/2-s/2)+'px';b.style.top=(r*CS+CS/2-s/2)+'px';fx.appendChild(b);setTimeout(()=>b.remove(),500)}
 function flashAll(){const f=document.createElement('div');f.className='flash';fx.appendChild(f);setTimeout(()=>f.remove(),550)}
 function scorePop(x,y,txt){const s=document.createElement('div');s.className='sc';s.textContent=txt;s.style.left=x+'px';s.style.top=y+'px';fx.appendChild(s);setTimeout(()=>s.remove(),950)}
+function msgBig(t){bigText(t)}
 function bigText(t){const s=document.createElement('div');s.className='big';s.textContent=t;$('#main').appendChild(s);setTimeout(()=>s.remove(),1150)}
 
 function effectCells(r,c,p){
@@ -346,12 +347,39 @@ async function explode(clear,creates,chain){
   render();
   await sleep(240);
 }
+const godOn=()=>SET.god&&M&&M.mode==='level'&&!M.done;
+function spawnColor(){
+  if(godOn()&&M.def.kind==='collect'&&Math.random()<.45)return M.def.color;
+  return rc();
+}
+/* Mode Dewa: bantuan tiba-tiba */
+async function godHelp(big){
+  const d=M.def,cells=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const q=grid[r][c];if(q&&q.type==='n')cells.push([r,c])}
+  for(let i=cells.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]]}
+  bigText('⚡ Bantuan Dewa!');SND.make();
+  const mk=(r,c,color,type)=>{const np=P(color,type);np.grow=true;const old=grid[r][c];if(old&&pieceEls[old.id]){pieceEls[old.id].remove();delete pieceEls[old.id]}grid[r][c]=np};
+  let k=0;const fire=[];
+  if(d.kind==='collect'){
+    // warna yang diburu tiba-tiba jadi banyak
+    const n=big?9:6;let done=0;
+    while(k<cells.length&&done<n){const[r,c]=cells[k++];if(grid[r][c].color!==d.color){mk(r,c,d.color,'n');done++}}
+    if(big&&k<cells.length){const[r,c]=cells[k++];mk(r,c,d.color,'b');fire.push(K(r,c))}
+    else if(k<cells.length){const[r,c]=cells[k++];mk(r,c,d.color,Math.random()<.5?'h':'v')}
+  }else{
+    const n=big?3:2;
+    for(let i=0;i<n&&k<cells.length;i++){const[r,c]=cells[k++];const t=['h','v','b','b'][Math.floor(Math.random()*4)];mk(r,c,grid[r][c].color,t);if(big)fire.push(K(r,c))}
+  }
+  render();await sleep(450);
+  if(fire.length)bigText('⚡ Petir!');
+  await resolve(null,fire.length?fire:null); // cocokan yang terbentuk langsung pecah gratis
+}
 function gravity(){
   for(let c=0;c<N;c++){
     let w=N-1;
     for(let r=N-1;r>=0;r--)if(grid[r][c]){if(w!==r){grid[w][c]=grid[r][c];grid[r][c]=null}w--}
     const empt=w+1;
-    for(let r=w;r>=0;r--){const p=P(rc());p.sr=r-empt;grid[r][c]=p}
+    for(let r=w;r>=0;r--){const p=P(spawnColor());p.sr=r-empt;grid[r][c]=p}
   }
 }
 async function resolve(focus,pre){
@@ -441,6 +469,14 @@ async function afterTurn(){
   if(M.mode==='santai'){if(M.score>BEST){BEST=M.score;LS.set('pm_best',BEST)}startHint();return}
   const d=M.def;
   if(d.kind==='collect'&&goalMet())return levelWin();
+  if(godOn()&&!(M.left<=0&&goalMet())){
+    M.godN=(M.godN||0)+1;
+    const behind=d.kind==='score'?M.score/d.target:M.collected/d.count;
+    const late=M.left<=Math.ceil(d.moves*.4)&&behind<.9;
+    if(M.godN%2===0||late){busy=true;await godHelp(late);busy=false;panel();save();
+      if(d.kind==='collect'&&goalMet())return levelWin()}
+    if(M.left<=0&&!goalMet()&&(M.godExtra||0)<2){M.godExtra=(M.godExtra||0)+1;M.left+=5;panel();save();bigText('⚡ +5 langkah!');SND.make();startHint();return}
+  }
   if(M.left<=0){if(goalMet())return levelWin();return levelLose()}
   startHint();
 }
@@ -474,7 +510,7 @@ function startSantai(){
   clearBoard();fillInit();layout();render(true);panel();save();setTitle();startHint();busy=false;
   bigText('Mode Santai');
 }
-function setTitle(){$('#title').textContent=M.mode==='level'?'Permen Manis · Level '+M.def.n:'Permen Manis · Santai'}
+function setTitle(){$('#title').textContent=M.mode==='level'?'Permen Manis · Level '+M.def.n+(SET.god?' ⚡':''):'Permen Manis · Santai'}
 function miniCandy(c){return candy(c,'n')}
 function panel(){
   const p=$('#panel');let h='';
@@ -595,6 +631,7 @@ $('#mGame').addEventListener('click',()=>{
     {t:'Pilih level…',f:levelDlg},
     ...(M.mode==='level'?[{t:'Ulangi level ini',f:()=>startLevel(M.def.n)}]:[]),
     {t:'Mode Santai (baru)',f:startSantai},
+    {t:SET.god?'⚡ Mode Dewa: AKTIF (matikan)':'⚡ Mode Dewa: nonaktif (nyalakan)',f:()=>{SET.god=!SET.god;LS.set('pm_set',SET);setTitle();msgBig(SET.god?'⚡ Mode Dewa aktif':'Mode Dewa mati')}},
     '-',
     {t:'Main Klondike',f:()=>goCards('klondike')},
     {t:'Main FreeCell',f:()=>goCards('freecell')},
@@ -628,6 +665,7 @@ function levelDlg(){
 function helpDlg(){
   dialog('Cara main',`<p>Geser permen ke sebelahnya (atau ketuk dua permen bersebelahan) untuk menukar. Susun 3 atau lebih yang sewarna sejajar.</p>
   <p><b>Permen spesial:</b><br>• 4 sejajar → permen bergaris, menghapus satu baris/kolom.<br>• Bentuk L atau T → permen bom, meledak 3×3.<br>• 5 sejajar → bola cokelat, menghapus semua permen sewarna dengan yang ditukar.<br>• Tukar dua permen spesial → efek gabungan yang lebih besar!</p>
+  <p><b>⚡ Mode Dewa</b> (menu Game): di mode Level, tiap beberapa langkah muncul bantuan — permen spesial, bom, bola cokelat, atau warna yang diburu tiba-tiba jadi banyak. Kalau langkah habis, dapat +5 langkah (maksimal 2 kali).</p>
   <p><b>Mode Level:</b> capai target sebelum langkah habis. Sisa langkah jadi bonus skor. <b>Mode Santai:</b> main bebas tanpa batas langkah.</p>`,[{t:'OK'}]);
 }
 window.kkBack=function(){if(openMenu){closeMenu();return true}if(dlgOpen){closeDlg();return true}return false};
