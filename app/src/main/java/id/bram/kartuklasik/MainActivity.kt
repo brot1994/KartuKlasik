@@ -20,7 +20,6 @@ class MainActivity : Activity() {
         window.navigationBarColor = grey
         var flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         if (Build.VERSION.SDK_INT >= 26) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = flags
 
         web = WebView(this)
@@ -32,7 +31,6 @@ class MainActivity : Activity() {
         with(web.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true
-            @Suppress("DEPRECATION")
             allowFileAccess = true
             textZoom = 100
             setSupportZoom(false)
